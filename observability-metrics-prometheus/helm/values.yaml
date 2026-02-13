@@ -1,0 +1,146 @@
+# Copyright 2026 The OpenChoreo Authors
+# SPDX-License-Identifier: Apache-2.0
+
+kube-prometheus-stack:
+  enabled: true
+
+  fullnameOverride: openchoreo-observability
+
+  prometheusOperator:
+    enabled: true
+    fullnameOverride: prometheus-operator
+
+    resources:
+      limits:
+        cpu: 40m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 30Mi
+
+  crds:
+    enabled: true
+
+  cleanPrometheusOperatorObjectNames: true
+
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector: {}
+      serviceMonitorSelectorNilUsesHelmValues: false
+      ruleNamespaceSelector: {}
+      ruleSelector: {}
+      ruleSelectorNilUsesHelmValues: false
+    service:
+      port: 9091
+      reloaderWebPort: 8081
+
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      podMetadata:
+        name: alertmanager
+      resources:
+        requests:
+          memory: '100Mi'
+          cpu: '50m'
+        limits:
+          memory: '200Mi'
+          cpu: '100m'
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ['alertname']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+        receiver: 'null'
+        routes:
+          - receiver: 'openchoreo-alerts'
+            matchers:
+              - openchoreo_alert = true
+      receivers:
+        - name: 'openchoreo-alerts'
+          webhook_configs:
+            - url: 'http://observer.openchoreo-observability-plane.svc.cluster.local:8080/api/alerting/webhook/prometheus'
+              send_resolved: false
+        - name: 'null'
+
+  grafana:
+    enabled: false
+    fullnameOverride: grafana
+    adminUser: admin
+    adminPassword: admin
+    sidecar:
+      dashboards:
+        enabled: false
+      datasources:
+        enabled: false
+    defaultDashboardsEnabled: false
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            access: proxy
+            url: http://openchoreo-observability-prometheus:9091
+            isDefault: true
+    grafana.ini:
+      unified_alerting:
+        enabled: true
+
+  kubernetesServiceMonitors:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  kube-state-metrics:
+    fullnameOverride: kube-state-metrics
+    collectors:
+      - pods
+    metricAllowlist:
+      - kube_pod_completion_time
+      - kube_pod_container_resource_limits
+      - kube_pod_container_resource_requests
+      - kube_pod_info
+      - kube_pod_init_container_resource_limits
+      - kube_pod_init_container_resource_requests
+      - kube_pod_labels
+      - kube_pod_start_time
+      - kube_pod_status_phase
+    metricLabelsAllowlist:
+      - pods=[openchoreo.dev/component-uid,openchoreo.dev/project-uid,openchoreo.dev/environment-uid]
+
+  thanosRuler:
+    enabled: false
+
+  defaultRules:
+    create: false
+
+  kubelet:
+    enabled: true
+
+  kubeApiServer:
+    enabled: false
+
+  kubeControllerManager:
+    enabled: false
+
+  coreDns:
+    enabled: false
+
+  kubeEtcd:
+    enabled: false
+
+  kubeScheduler:
+    enabled: false
+
+  kubeProxy:
+    enabled: false
+
+  nodeExporter:
+    enabled: false

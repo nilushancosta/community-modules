@@ -19,17 +19,26 @@ attempt=1
 max_attempts=30
 
 while [ $attempt -le $max_attempts ]; do
+    set +e
     clusterHealth=$(curl --header "Authorization: Basic $authnToken" \
                          --insecure \
                          --location "$openSearchHost/_cluster/health" \
                          --show-error \
                          --silent)
-    echo $clusterHealth | jq
-    clusterStatus=$(echo "$clusterHealth" | jq --raw-output '.status')
-    if [[ "$clusterStatus" == "green" || "$clusterStatus" == "yellow" ]]; then
-        echo -e "OpenSearch cluster ready. Continuing with setup...\n"
-        break
+    curlExitCode=$?
+    set -e
+
+    if [ $curlExitCode -ne 0 ]; then
+        echo "curl failed with exit code $curlExitCode (attempt $attempt/$max_attempts)"
+    else
+        echo $clusterHealth | jq
+        clusterStatus=$(echo "$clusterHealth" | jq --raw-output '.status')
+        if [[ "$clusterStatus" == "green" || "$clusterStatus" == "yellow" ]]; then
+            echo -e "OpenSearch cluster ready. Continuing with setup...\n"
+            break
+        fi
     fi
+
     echo "Waiting for OpenSearch cluster to become ready... (attempt $attempt/$max_attempts)"
 
     if [ $attempt -eq $max_attempts ]; then
@@ -220,6 +229,7 @@ elif [ "$webhookCheckResponseCode" -eq 404 ]; then
     echo "HTTP response of webhook destination creation API request: $createWebhookResponse"
 else
     echo "Error checking webhook destination. HTTP response code: $webhookCheckResponseCode"
+    exit 1
 fi
 # 4. Add/Update ISM Policies
 # Reference: https://docs.opensearch.org/latest/im-plugin/ism/api/

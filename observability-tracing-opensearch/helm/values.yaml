@@ -1,0 +1,95 @@
+# Copyright 2026 The OpenChoreo Authors
+# SPDX-License-Identifier: Apache-2.0
+
+global:
+  installationMode: "singleCluster"
+
+openSearch:
+  enabled: true
+
+  extraEnvs:
+    - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      value: ThisIsTheOpenSearchPassword1
+
+  nameOverride: "opensearch"
+
+  image:
+    tag: "3.3.0"
+
+  masterService: opensearch
+
+  rbac:
+    create: true
+    serviceAccountName: "opensearch"
+
+  singleNode: true
+
+
+
+opentelemetry-collector:
+  enabled: true
+
+  clusterRole:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["list", "watch"]
+      - apiGroups: ["apps"]
+        resources: ["replicasets"]
+        verbs: ["list","watch"]
+
+  configMap:
+    create: false
+    existingName: "opentelemetry-collector-config"
+
+  fullnameOverride: "opentelemetry-collector"
+
+  image:
+    repository: otel/opentelemetry-collector-contrib
+
+  mode: deployment
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 200Mi
+    requests:
+      cpu: 50m
+      memory: 100Mi
+
+
+## -----------------------------------------------------------
+## Values for OpenChoreo specific customizations and workloads
+## -----------------------------------------------------------
+openSearchSetup:
+  image:
+    repository: "oc-module-opensearch-init"
+    tag: "latest"
+
+  openSearchUsername: "admin"
+  openSearchPassword: "ThisIsTheOpenSearchPassword1"
+
+  alertingWebhookUrl: "http://observer.openchoreo-observability-plane:8080/api/alerting/webhook/opensearch"
+
+  dataRetentionTime:
+    containerLogs: "30d"
+    traces: "30d"
+    rcaReports: "90d"
+
+
+opentelemetryCollectorCustomizations:
+  openSearchQueue:
+    numConsumers: 5
+    queueSize: 1000
+    sizer: items
+
+  tailSampling:
+    enabled: true
+    decisionWait: 10s
+    numTraces: 100
+    expectedNewTracesPerSec: 10
+    decisionCache:
+      sampledCacheSize: 10000
+      nonSampledCacheSize: 1000
+    spansPerSecond: 10

@@ -86,14 +86,13 @@ jobs:
 
               FULL_IMAGE="ghcr.io/${REPO_OWNER}/${image_name}"
 
-              echo "::group::Building ${FULL_IMAGE}:${SHORT_SHA}"
-              docker build \
+              echo "::group::Building and pushing ${FULL_IMAGE}:${SHORT_SHA}"
+              docker buildx build \
+                --push \
                 -t "${FULL_IMAGE}:${SHORT_SHA}" \
                 -t "${FULL_IMAGE}:latest" \
                 -f "${module}/${dockerfile}" \
                 "${module}/${context}"
-
-              docker push "${FULL_IMAGE}" --all-tags
               echo "::endgroup::"
 
               # Update image repository in values.yaml

@@ -54,7 +54,7 @@ helm install opensearch-operator opensearch-operator/opensearch-operator \
 
 ```bash
 helm upgrade --install observability-logs-opensearch \
-  oci://ghcr.io/openchoreo/charts/observability-logs-opensearch \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-opensearch \
   --create-namespace \
   --namespace openchoreo-observability-plane \
   --version 0.3.2 \
@@ -65,7 +65,7 @@ helm upgrade --install observability-logs-opensearch \
 >
 > ```bash
 > helm upgrade --install observability-logs-opensearch \
->   oci://ghcr.io/openchoreo/charts/observability-logs-opensearch \
+>   oci://ghcr.io/openchoreo/helm-charts/observability-logs-opensearch \
 >   --create-namespace \
 >   --namespace openchoreo-observability-plane \
 >   --version 0.3.2 \
@@ -79,7 +79,7 @@ Enable Fluent Bit to start collecting logs from the cluster and publish to OpenS
 
 ```bash
 helm upgrade observability-logs-opensearch \
-  oci://ghcr.io/openchoreo/charts/observability-logs-opensearch \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-opensearch \
   --create-namespace \
   --namespace openchoreo-observability-plane \
   --version 0.3.2 \

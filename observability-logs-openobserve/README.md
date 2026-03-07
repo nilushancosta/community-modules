@@ -24,7 +24,7 @@ Install this module in your OpenChoreo cluster using:
 
 ```bash
 helm upgrade --install observability-logs-openobserve \
-  oci://ghcr.io/openchoreo/charts/observability-logs-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-openobserve \
   --create-namespace \
   --namespace openchoreo-observability-plane \
   --version 0.2.1
@@ -36,7 +36,7 @@ Enable Fluent Bit to start collecting logs from the cluster and publish to OpenO
 
 ```bash
 helm upgrade observability-logs-openobserve \
-  oci://ghcr.io/openchoreo/charts/observability-logs-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-logs-openobserve \
   --namespace openchoreo-observability-plane \
   --version 0.2.1 \
   --reuse-values \

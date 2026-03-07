@@ -54,7 +54,7 @@ helm install opensearch-operator opensearch-operator/opensearch-operator \
 
 ```bash
 helm upgrade --install observability-tracing-opensearch \
-  oci://ghcr.io/openchoreo/charts/observability-tracing-opensearch \
+  oci://ghcr.io/openchoreo/helm-charts/observability-tracing-opensearch \
   --create-namespace \
   --namespace openchoreo-observability-plane \
   --version 0.3.3 \
@@ -65,7 +65,7 @@ helm upgrade --install observability-tracing-opensearch \
 >
 > ```bash
 > helm upgrade --install observability-tracing-opensearch \
->   oci://ghcr.io/openchoreo/charts/observability-tracing-opensearch \
+>   oci://ghcr.io/openchoreo/helm-charts/observability-tracing-opensearch \
 >   --create-namespace \
 >   --namespace openchoreo-observability-plane \
 >   --version 0.3.3 \

@@ -135,8 +135,8 @@ jobs:
 
             helm package "${chart_dir}" -d .packages
 
-            echo "Pushing ${chart_name}:${CHART_VERSION} to ghcr.io/${REPO_OWNER}/charts..."
-            helm push ".packages/${chart_name}-${CHART_VERSION}.tgz" "oci://ghcr.io/${REPO_OWNER}/charts"
+            echo "Pushing ${chart_name}:${CHART_VERSION} to ghcr.io/${REPO_OWNER}/helm-charts..."
+            helm push ".packages/${chart_name}-${CHART_VERSION}.tgz" "oci://ghcr.io/${REPO_OWNER}/helm-charts"
 
             echo "::endgroup::"
           done

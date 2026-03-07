@@ -23,7 +23,7 @@ Install this module in your OpenChoreo cluster using:
 
 ```bash
 helm upgrade --install observability-tracing-openobserve \
-  oci://ghcr.io/openchoreo/charts/observability-tracing-openobserve \
+  oci://ghcr.io/openchoreo/helm-charts/observability-tracing-openobserve \
   --create-namespace \
   --namespace openchoreo-observability-plane \
   --version 0.1.1
@@ -33,7 +33,7 @@ helm upgrade --install observability-tracing-openobserve \
 >
 > ```bash
 > helm upgrade --install observability-tracing-openobserve \
->  oci://ghcr.io/openchoreo/charts/observability-tracing-openobserve \
+>  oci://ghcr.io/openchoreo/helm-charts/observability-tracing-openobserve \
 >  --create-namespace \
 >  --namespace openchoreo-observability-plane \
 >  --version 0.1.1 \

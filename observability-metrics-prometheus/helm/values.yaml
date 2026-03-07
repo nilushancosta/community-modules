@@ -66,7 +66,7 @@ kube-prometheus-stack:
       receivers:
         - name: 'openchoreo-alerts'
           webhook_configs:
-            - url: 'http://observer.openchoreo-observability-plane.svc.cluster.local:8080/api/alerting/webhook/prometheus'
+            - url: 'http://metrics-adapter:9099/api/alerting/webhook'
               send_resolved: false
         - name: 'null'
 
@@ -146,3 +146,16 @@ kube-prometheus-stack:
 
   nodeExporter:
     enabled: false
+
+adapter:
+  image:
+    repository: "ghcr.io/openchoreo/observability-metrics-prometheus-adapter"
+    tag: "latest" # Replaced by CI with the published image tag
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 20m
+      memory: 64Mi

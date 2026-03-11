@@ -17,31 +17,48 @@ const (
 
 // Defines values for AlertRuleRequestConditionOperator.
 const (
-	Eq  AlertRuleRequestConditionOperator = "eq"
-	Gt  AlertRuleRequestConditionOperator = "gt"
-	Gte AlertRuleRequestConditionOperator = "gte"
-	Lt  AlertRuleRequestConditionOperator = "lt"
-	Lte AlertRuleRequestConditionOperator = "lte"
-	Neq AlertRuleRequestConditionOperator = "neq"
+	AlertRuleRequestConditionOperatorEq  AlertRuleRequestConditionOperator = "eq"
+	AlertRuleRequestConditionOperatorGt  AlertRuleRequestConditionOperator = "gt"
+	AlertRuleRequestConditionOperatorGte AlertRuleRequestConditionOperator = "gte"
+	AlertRuleRequestConditionOperatorLt  AlertRuleRequestConditionOperator = "lt"
+	AlertRuleRequestConditionOperatorLte AlertRuleRequestConditionOperator = "lte"
+	AlertRuleRequestConditionOperatorNeq AlertRuleRequestConditionOperator = "neq"
 )
 
 // Defines values for AlertRuleRequestSourceMetric.
 const (
-	CpuUsage    AlertRuleRequestSourceMetric = "cpu_usage"
-	MemoryUsage AlertRuleRequestSourceMetric = "memory_usage"
+	AlertRuleRequestSourceMetricCpuUsage    AlertRuleRequestSourceMetric = "cpu_usage"
+	AlertRuleRequestSourceMetricMemoryUsage AlertRuleRequestSourceMetric = "memory_usage"
 )
 
-// Defines values for AlertRuleRequestSourceType.
+// Defines values for AlertRuleResponseConditionOperator.
 const (
-	Log    AlertRuleRequestSourceType = "log"
-	Metric AlertRuleRequestSourceType = "metric"
+	AlertRuleResponseConditionOperatorEq  AlertRuleResponseConditionOperator = "eq"
+	AlertRuleResponseConditionOperatorGt  AlertRuleResponseConditionOperator = "gt"
+	AlertRuleResponseConditionOperatorGte AlertRuleResponseConditionOperator = "gte"
+	AlertRuleResponseConditionOperatorLt  AlertRuleResponseConditionOperator = "lt"
+	AlertRuleResponseConditionOperatorLte AlertRuleResponseConditionOperator = "lte"
+	AlertRuleResponseConditionOperatorNeq AlertRuleResponseConditionOperator = "neq"
+)
+
+// Defines values for AlertRuleResponseSourceMetric.
+const (
+	AlertRuleResponseSourceMetricCpuUsage    AlertRuleResponseSourceMetric = "cpu_usage"
+	AlertRuleResponseSourceMetricMemoryUsage AlertRuleResponseSourceMetric = "memory_usage"
+)
+
+// Defines values for AlertWebhookResponseStatus.
+const (
+	Error   AlertWebhookResponseStatus = "error"
+	Success AlertWebhookResponseStatus = "success"
 )
 
 // Defines values for AlertingRuleSyncResponseAction.
 const (
-	Created AlertingRuleSyncResponseAction = "created"
-	Deleted AlertingRuleSyncResponseAction = "deleted"
-	Updated AlertingRuleSyncResponseAction = "updated"
+	Created   AlertingRuleSyncResponseAction = "created"
+	Deleted   AlertingRuleSyncResponseAction = "deleted"
+	Unchanged AlertingRuleSyncResponseAction = "unchanged"
+	Updated   AlertingRuleSyncResponseAction = "updated"
 )
 
 // Defines values for AlertingRuleSyncResponseStatus.
@@ -53,6 +70,7 @@ const (
 // Defines values for ErrorResponseTitle.
 const (
 	BadRequest          ErrorResponseTitle = "badRequest"
+	Conflict            ErrorResponseTitle = "conflict"
 	Forbidden           ErrorResponseTitle = "forbidden"
 	InternalServerError ErrorResponseTitle = "internalServerError"
 	NotFound            ErrorResponseTitle = "notFound"
@@ -113,9 +131,6 @@ type AlertRuleRequest struct {
 
 		// Query The query to execute for log based alerts
 		Query *string `json:"query,omitempty"`
-
-		// Type The type of the source
-		Type *AlertRuleRequestSourceType `json:"type,omitempty"`
 	} `json:"source,omitempty"`
 }
 
@@ -125,8 +140,66 @@ type AlertRuleRequestConditionOperator string
 // AlertRuleRequestSourceMetric The metric to query for metric based alerts
 type AlertRuleRequestSourceMetric string
 
-// AlertRuleRequestSourceType The type of the source
-type AlertRuleRequestSourceType string
+// AlertRuleResponse defines model for AlertRuleResponse.
+type AlertRuleResponse struct {
+	Condition *struct {
+		// Enabled Whether the alert rule is enabled
+		Enabled *bool `json:"enabled,omitempty"`
+
+		// Interval The interval of time to query for the alert rule
+		Interval *string `json:"interval,omitempty"`
+
+		// Operator The operator to use for the alert rule
+		Operator *AlertRuleResponseConditionOperator `json:"operator,omitempty"`
+
+		// Threshold The threshold value to use for the alert rule
+		Threshold *float32 `json:"threshold,omitempty"`
+
+		// Window The window of time to query for the alert rule
+		Window *string `json:"window,omitempty"`
+	} `json:"condition,omitempty"`
+	Metadata *struct {
+		// ComponentUid The OpenChoreo component UID to query
+		ComponentUid *openapi_types.UUID `json:"componentUid,omitempty"`
+
+		// EnvironmentUid The OpenChoreo environment UID to query
+		EnvironmentUid *openapi_types.UUID `json:"environmentUid,omitempty"`
+
+		// Name The name of the alert rule
+		Name *string `json:"name,omitempty"`
+
+		// Namespace The namespace of the alert rule CR
+		Namespace *string `json:"namespace,omitempty"`
+
+		// ProjectUid The OpenChoreo project UID to query
+		ProjectUid *openapi_types.UUID `json:"projectUid,omitempty"`
+	} `json:"metadata,omitempty"`
+	Source *struct {
+		// Metric The metric to query for metric based alerts
+		Metric *AlertRuleResponseSourceMetric `json:"metric,omitempty"`
+
+		// Query The query to execute for log based alerts
+		Query *string `json:"query,omitempty"`
+	} `json:"source,omitempty"`
+}
+
+// AlertRuleResponseConditionOperator The operator to use for the alert rule
+type AlertRuleResponseConditionOperator string
+
+// AlertRuleResponseSourceMetric The metric to query for metric based alerts
+type AlertRuleResponseSourceMetric string
+
+// AlertWebhookResponse defines model for AlertWebhookResponse.
+type AlertWebhookResponse struct {
+	// Message The message of the alert webhook
+	Message *string `json:"message,omitempty"`
+
+	// Status The status of the alert webhook
+	Status *AlertWebhookResponseStatus `json:"status,omitempty"`
+}
+
+// AlertWebhookResponseStatus The status of the alert webhook
+type AlertWebhookResponseStatus string
 
 // AlertingRuleSyncResponse defines model for AlertingRuleSyncResponse.
 type AlertingRuleSyncResponse struct {
@@ -287,11 +360,20 @@ type WorkflowSearchScope struct {
 	WorkflowRunName *string `json:"workflowRunName,omitempty"`
 }
 
+// HandleAlertWebhookJSONBody defines parameters for HandleAlertWebhook.
+type HandleAlertWebhookJSONBody = map[string]interface{}
+
 // QueryLogsJSONRequestBody defines body for QueryLogs for application/json ContentType.
 type QueryLogsJSONRequestBody = LogsQueryRequest
 
 // CreateAlertRuleJSONRequestBody defines body for CreateAlertRule for application/json ContentType.
 type CreateAlertRuleJSONRequestBody = AlertRuleRequest
+
+// UpdateAlertRuleJSONRequestBody defines body for UpdateAlertRule for application/json ContentType.
+type UpdateAlertRuleJSONRequestBody = AlertRuleRequest
+
+// HandleAlertWebhookJSONRequestBody defines body for HandleAlertWebhook for application/json ContentType.
+type HandleAlertWebhookJSONRequestBody = HandleAlertWebhookJSONBody
 
 // AsComponentSearchScope returns the union data inside the LogsQueryRequest_SearchScope as a ComponentSearchScope
 func (t LogsQueryRequest_SearchScope) AsComponentSearchScope() (ComponentSearchScope, error) {

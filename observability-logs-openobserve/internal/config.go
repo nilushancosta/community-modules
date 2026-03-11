@@ -6,19 +6,21 @@ package app
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 )
 
 type Config struct {
-	ServerPort          string
-	OpenObserveURL      string
-	OpenObserveOrg      string
-	OpenObserveStream   string
-	OpenObserveUser     string
+	ServerPort        string
+	OpenObserveURL    string
+	OpenObserveOrg    string
+	OpenObserveStream string
+	OpenObserveUser   string
 	OpenObservePassword string
-	LogLevel            slog.Level
+	ObserverURL       string
+	LogLevel          slog.Level
 }
 
 // LoadConfig loads configuration from environment variables
@@ -29,6 +31,7 @@ func LoadConfig() (*Config, error) {
 	openObserveStream := getEnv("OPENOBSERVE_STREAM", "default")
 	openObserveUser := getEnv("OPENOBSERVE_USER", "")
 	openObservePassword := getEnv("OPENOBSERVE_PASSWORD", "")
+	observerURL := getEnv("OBSERVER_URL", "")
 
 	// Parse log level
 	logLevel := slog.LevelInfo
@@ -57,18 +60,27 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("Environment variable OPENOBSERVE_PASSWORD is required")
 	}
 
+	if observerURL == "" {
+		return nil, fmt.Errorf("environment variable OBSERVER_URL is required")
+	}
+	parsedURL, err := url.Parse(observerURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return nil, fmt.Errorf("OBSERVER_URL must be a valid URL with scheme and host, got: %q", observerURL)
+	}
+
 	if _, err := strconv.Atoi(serverPort); err != nil {
 		return nil, fmt.Errorf("invalid SERVER_PORT: %w", err)
 	}
 
 	return &Config{
-		ServerPort:          serverPort,
-		OpenObserveURL:      openObserveURL,
-		OpenObserveOrg:      openObserveOrg,
-		OpenObserveStream:   openObserveStream,
-		OpenObserveUser:     openObserveUser,
+		ServerPort:      serverPort,
+		OpenObserveURL:  openObserveURL,
+		OpenObserveOrg:  openObserveOrg,
+		OpenObserveStream: openObserveStream,
+		OpenObserveUser: openObserveUser,
 		OpenObservePassword: openObservePassword,
-		LogLevel:            logLevel,
+		ObserverURL:     observerURL,
+		LogLevel:        logLevel,
 	}, nil
 }
 

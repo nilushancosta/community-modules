@@ -33,6 +33,15 @@ type ServerInterface interface {
 	// Delete alert rule
 	// (DELETE /api/v1alpha1/alerts/rules/{ruleName})
 	DeleteAlertRule(w http.ResponseWriter, r *http.Request, ruleName string)
+	// Get alert rule
+	// (GET /api/v1alpha1/alerts/rules/{ruleName})
+	GetAlertRule(w http.ResponseWriter, r *http.Request, ruleName string)
+	// Update alert rule
+	// (PUT /api/v1alpha1/alerts/rules/{ruleName})
+	UpdateAlertRule(w http.ResponseWriter, r *http.Request, ruleName string)
+	// Handles triggered alerts from the alerting backend
+	// (POST /api/v1alpha1/alerts/webhook)
+	HandleAlertWebhook(w http.ResponseWriter, r *http.Request)
 	// Health check
 	// (GET /health)
 	Health(w http.ResponseWriter, r *http.Request)
@@ -109,6 +118,82 @@ func (siw *ServerInterfaceWrapper) DeleteAlertRule(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteAlertRule(w, r, ruleName)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAlertRule operation middleware
+func (siw *ServerInterfaceWrapper) GetAlertRule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "ruleName" -------------
+	var ruleName string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ruleName", r.PathValue("ruleName"), &ruleName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ruleName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAlertRule(w, r, ruleName)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAlertRule operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAlertRule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "ruleName" -------------
+	var ruleName string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ruleName", r.PathValue("ruleName"), &ruleName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ruleName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAlertRule(w, r, ruleName)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// HandleAlertWebhook operation middleware
+func (siw *ServerInterfaceWrapper) HandleAlertWebhook(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HandleAlertWebhook(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -255,6 +340,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/logs/query", wrapper.QueryLogs)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1alpha1/alerts/rules", wrapper.CreateAlertRule)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1alpha1/alerts/rules/{ruleName}", wrapper.DeleteAlertRule)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1alpha1/alerts/rules/{ruleName}", wrapper.GetAlertRule)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1alpha1/alerts/rules/{ruleName}", wrapper.UpdateAlertRule)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1alpha1/alerts/webhook", wrapper.HandleAlertWebhook)
 	m.HandleFunc("GET "+options.BaseURL+"/health", wrapper.Health)
 
 	return m
@@ -321,11 +409,11 @@ type CreateAlertRuleResponseObject interface {
 	VisitCreateAlertRuleResponse(w http.ResponseWriter) error
 }
 
-type CreateAlertRule200JSONResponse AlertingRuleSyncResponse
+type CreateAlertRule201JSONResponse AlertingRuleSyncResponse
 
-func (response CreateAlertRule200JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+func (response CreateAlertRule201JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -335,6 +423,15 @@ type CreateAlertRule400JSONResponse ErrorResponse
 func (response CreateAlertRule400JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateAlertRule409JSONResponse ErrorResponse
+
+func (response CreateAlertRule409JSONResponse) VisitCreateAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -374,9 +471,133 @@ func (response DeleteAlertRule400JSONResponse) VisitDeleteAlertRuleResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type DeleteAlertRule404JSONResponse ErrorResponse
+
+func (response DeleteAlertRule404JSONResponse) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteAlertRule500JSONResponse ErrorResponse
 
 func (response DeleteAlertRule500JSONResponse) VisitDeleteAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlertRuleRequestObject struct {
+	RuleName string `json:"ruleName"`
+}
+
+type GetAlertRuleResponseObject interface {
+	VisitGetAlertRuleResponse(w http.ResponseWriter) error
+}
+
+type GetAlertRule200JSONResponse AlertRuleResponse
+
+func (response GetAlertRule200JSONResponse) VisitGetAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlertRule400JSONResponse ErrorResponse
+
+func (response GetAlertRule400JSONResponse) VisitGetAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlertRule404JSONResponse ErrorResponse
+
+func (response GetAlertRule404JSONResponse) VisitGetAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlertRule500JSONResponse ErrorResponse
+
+func (response GetAlertRule500JSONResponse) VisitGetAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAlertRuleRequestObject struct {
+	RuleName string `json:"ruleName"`
+	Body     *UpdateAlertRuleJSONRequestBody
+}
+
+type UpdateAlertRuleResponseObject interface {
+	VisitUpdateAlertRuleResponse(w http.ResponseWriter) error
+}
+
+type UpdateAlertRule200JSONResponse AlertingRuleSyncResponse
+
+func (response UpdateAlertRule200JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAlertRule400JSONResponse ErrorResponse
+
+func (response UpdateAlertRule400JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateAlertRule500JSONResponse ErrorResponse
+
+func (response UpdateAlertRule500JSONResponse) VisitUpdateAlertRuleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type HandleAlertWebhookRequestObject struct {
+	Body *HandleAlertWebhookJSONRequestBody
+}
+
+type HandleAlertWebhookResponseObject interface {
+	VisitHandleAlertWebhookResponse(w http.ResponseWriter) error
+}
+
+type HandleAlertWebhook200JSONResponse AlertWebhookResponse
+
+func (response HandleAlertWebhook200JSONResponse) VisitHandleAlertWebhookResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type HandleAlertWebhook400JSONResponse ErrorResponse
+
+func (response HandleAlertWebhook400JSONResponse) VisitHandleAlertWebhookResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type HandleAlertWebhook500JSONResponse ErrorResponse
+
+func (response HandleAlertWebhook500JSONResponse) VisitHandleAlertWebhookResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -424,6 +645,15 @@ type StrictServerInterface interface {
 	// Delete alert rule
 	// (DELETE /api/v1alpha1/alerts/rules/{ruleName})
 	DeleteAlertRule(ctx context.Context, request DeleteAlertRuleRequestObject) (DeleteAlertRuleResponseObject, error)
+	// Get alert rule
+	// (GET /api/v1alpha1/alerts/rules/{ruleName})
+	GetAlertRule(ctx context.Context, request GetAlertRuleRequestObject) (GetAlertRuleResponseObject, error)
+	// Update alert rule
+	// (PUT /api/v1alpha1/alerts/rules/{ruleName})
+	UpdateAlertRule(ctx context.Context, request UpdateAlertRuleRequestObject) (UpdateAlertRuleResponseObject, error)
+	// Handles triggered alerts from the alerting backend
+	// (POST /api/v1alpha1/alerts/webhook)
+	HandleAlertWebhook(ctx context.Context, request HandleAlertWebhookRequestObject) (HandleAlertWebhookResponseObject, error)
 	// Health check
 	// (GET /health)
 	Health(ctx context.Context, request HealthRequestObject) (HealthResponseObject, error)
@@ -546,6 +776,96 @@ func (sh *strictHandler) DeleteAlertRule(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// GetAlertRule operation middleware
+func (sh *strictHandler) GetAlertRule(w http.ResponseWriter, r *http.Request, ruleName string) {
+	var request GetAlertRuleRequestObject
+
+	request.RuleName = ruleName
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAlertRule(ctx, request.(GetAlertRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAlertRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAlertRuleResponseObject); ok {
+		if err := validResponse.VisitGetAlertRuleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateAlertRule operation middleware
+func (sh *strictHandler) UpdateAlertRule(w http.ResponseWriter, r *http.Request, ruleName string) {
+	var request UpdateAlertRuleRequestObject
+
+	request.RuleName = ruleName
+
+	var body UpdateAlertRuleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateAlertRule(ctx, request.(UpdateAlertRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateAlertRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateAlertRuleResponseObject); ok {
+		if err := validResponse.VisitUpdateAlertRuleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// HandleAlertWebhook operation middleware
+func (sh *strictHandler) HandleAlertWebhook(w http.ResponseWriter, r *http.Request) {
+	var request HandleAlertWebhookRequestObject
+
+	var body HandleAlertWebhookJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.HandleAlertWebhook(ctx, request.(HandleAlertWebhookRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "HandleAlertWebhook")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(HandleAlertWebhookResponseObject); ok {
+		if err := validResponse.VisitHandleAlertWebhookResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Health operation middleware
 func (sh *strictHandler) Health(w http.ResponseWriter, r *http.Request) {
 	var request HealthRequestObject
@@ -573,45 +893,49 @@ func (sh *strictHandler) Health(w http.ResponseWriter, r *http.Request) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"wz4jQScAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

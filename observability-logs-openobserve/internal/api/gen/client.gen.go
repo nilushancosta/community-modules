@@ -102,6 +102,19 @@ type ClientInterface interface {
 	// DeleteAlertRule request
 	DeleteAlertRule(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAlertRule request
+	GetAlertRule(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAlertRuleWithBody request with any body
+	UpdateAlertRuleWithBody(ctx context.Context, ruleName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateAlertRule(ctx context.Context, ruleName string, body UpdateAlertRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HandleAlertWebhookWithBody request with any body
+	HandleAlertWebhookWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	HandleAlertWebhook(ctx context.Context, body HandleAlertWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -156,6 +169,66 @@ func (c *Client) CreateAlertRule(ctx context.Context, body CreateAlertRuleJSONRe
 
 func (c *Client) DeleteAlertRule(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteAlertRuleRequest(c.Server, ruleName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetAlertRule(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAlertRuleRequest(c.Server, ruleName)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateAlertRuleWithBody(ctx context.Context, ruleName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAlertRuleRequestWithBody(c.Server, ruleName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateAlertRule(ctx context.Context, ruleName string, body UpdateAlertRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAlertRuleRequest(c.Server, ruleName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) HandleAlertWebhookWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleAlertWebhookRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) HandleAlertWebhook(ctx context.Context, body HandleAlertWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleAlertWebhookRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +365,127 @@ func NewDeleteAlertRuleRequest(server string, ruleName string) (*http.Request, e
 	return req, nil
 }
 
+// NewGetAlertRuleRequest generates requests for GetAlertRule
+func NewGetAlertRuleRequest(server string, ruleName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "ruleName", runtime.ParamLocationPath, ruleName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/alerts/rules/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAlertRuleRequest calls the generic UpdateAlertRule builder with application/json body
+func NewUpdateAlertRuleRequest(server string, ruleName string, body UpdateAlertRuleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAlertRuleRequestWithBody(server, ruleName, "application/json", bodyReader)
+}
+
+// NewUpdateAlertRuleRequestWithBody generates requests for UpdateAlertRule with any type of body
+func NewUpdateAlertRuleRequestWithBody(server string, ruleName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "ruleName", runtime.ParamLocationPath, ruleName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/alerts/rules/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewHandleAlertWebhookRequest calls the generic HandleAlertWebhook builder with application/json body
+func NewHandleAlertWebhookRequest(server string, body HandleAlertWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewHandleAlertWebhookRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewHandleAlertWebhookRequestWithBody generates requests for HandleAlertWebhook with any type of body
+func NewHandleAlertWebhookRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/alerts/webhook")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewHealthRequest generates requests for Health
 func NewHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -375,6 +569,19 @@ type ClientWithResponsesInterface interface {
 	// DeleteAlertRuleWithResponse request
 	DeleteAlertRuleWithResponse(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*DeleteAlertRuleResponse, error)
 
+	// GetAlertRuleWithResponse request
+	GetAlertRuleWithResponse(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*GetAlertRuleResponse, error)
+
+	// UpdateAlertRuleWithBodyWithResponse request with any body
+	UpdateAlertRuleWithBodyWithResponse(ctx context.Context, ruleName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAlertRuleResponse, error)
+
+	UpdateAlertRuleWithResponse(ctx context.Context, ruleName string, body UpdateAlertRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAlertRuleResponse, error)
+
+	// HandleAlertWebhookWithBodyWithResponse request with any body
+	HandleAlertWebhookWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleAlertWebhookResponse, error)
+
+	HandleAlertWebhookWithResponse(ctx context.Context, body HandleAlertWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleAlertWebhookResponse, error)
+
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 }
@@ -408,8 +615,9 @@ func (r QueryLogsResponse) StatusCode() int {
 type CreateAlertRuleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *AlertingRuleSyncResponse
+	JSON201      *AlertingRuleSyncResponse
 	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -434,6 +642,7 @@ type DeleteAlertRuleResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *AlertingRuleSyncResponse
 	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -447,6 +656,79 @@ func (r DeleteAlertRuleResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r DeleteAlertRuleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAlertRuleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertRuleResponse
+	JSON400      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAlertRuleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAlertRuleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateAlertRuleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertingRuleSyncResponse
+	JSON400      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAlertRuleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAlertRuleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type HandleAlertWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AlertWebhookResponse
+	JSON400      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r HandleAlertWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HandleAlertWebhookResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -522,6 +804,49 @@ func (c *ClientWithResponses) DeleteAlertRuleWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseDeleteAlertRuleResponse(rsp)
+}
+
+// GetAlertRuleWithResponse request returning *GetAlertRuleResponse
+func (c *ClientWithResponses) GetAlertRuleWithResponse(ctx context.Context, ruleName string, reqEditors ...RequestEditorFn) (*GetAlertRuleResponse, error) {
+	rsp, err := c.GetAlertRule(ctx, ruleName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAlertRuleResponse(rsp)
+}
+
+// UpdateAlertRuleWithBodyWithResponse request with arbitrary body returning *UpdateAlertRuleResponse
+func (c *ClientWithResponses) UpdateAlertRuleWithBodyWithResponse(ctx context.Context, ruleName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAlertRuleResponse, error) {
+	rsp, err := c.UpdateAlertRuleWithBody(ctx, ruleName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAlertRuleResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateAlertRuleWithResponse(ctx context.Context, ruleName string, body UpdateAlertRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAlertRuleResponse, error) {
+	rsp, err := c.UpdateAlertRule(ctx, ruleName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAlertRuleResponse(rsp)
+}
+
+// HandleAlertWebhookWithBodyWithResponse request with arbitrary body returning *HandleAlertWebhookResponse
+func (c *ClientWithResponses) HandleAlertWebhookWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleAlertWebhookResponse, error) {
+	rsp, err := c.HandleAlertWebhookWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleAlertWebhookResponse(rsp)
+}
+
+func (c *ClientWithResponses) HandleAlertWebhookWithResponse(ctx context.Context, body HandleAlertWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleAlertWebhookResponse, error) {
+	rsp, err := c.HandleAlertWebhook(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleAlertWebhookResponse(rsp)
 }
 
 // HealthWithResponse request returning *HealthResponse
@@ -601,12 +926,12 @@ func ParseCreateAlertRuleResponse(rsp *http.Response) (*CreateAlertRuleResponse,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest AlertingRuleSyncResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
@@ -614,6 +939,13 @@ func ParseCreateAlertRuleResponse(rsp *http.Response) (*CreateAlertRuleResponse,
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -643,6 +975,140 @@ func ParseDeleteAlertRuleResponse(rsp *http.Response) (*DeleteAlertRuleResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest AlertingRuleSyncResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAlertRuleResponse parses an HTTP response from a GetAlertRuleWithResponse call
+func ParseGetAlertRuleResponse(rsp *http.Response) (*GetAlertRuleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAlertRuleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertRuleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAlertRuleResponse parses an HTTP response from a UpdateAlertRuleWithResponse call
+func ParseUpdateAlertRuleResponse(rsp *http.Response) (*UpdateAlertRuleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAlertRuleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertingRuleSyncResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseHandleAlertWebhookResponse parses an HTTP response from a HandleAlertWebhookWithResponse call
+func ParseHandleAlertWebhookResponse(rsp *http.Response) (*HandleAlertWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HandleAlertWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AlertWebhookResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -13,19 +13,22 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/openchoreo/community-modules/observability-logs-openobserve/internal/api/gen"
+	"github.com/openchoreo/community-modules/observability-logs-openobserve/internal/observer"
 	"github.com/openchoreo/community-modules/observability-logs-openobserve/internal/openobserve"
 )
 
 // LogsHandler implements the generated StrictServerInterface.
 type LogsHandler struct {
-	client *openobserve.Client
-	logger *slog.Logger
+	client         *openobserve.Client
+	observerClient *observer.Client
+	logger         *slog.Logger
 }
 
-func NewLogsHandler(client *openobserve.Client, logger *slog.Logger) *LogsHandler {
+func NewLogsHandler(client *openobserve.Client, observerClient *observer.Client, logger *slog.Logger) *LogsHandler {
 	return &LogsHandler{
-		client: client,
-		logger: logger,
+		client:         client,
+		observerClient: observerClient,
+		logger:         logger,
 	}
 }
 
@@ -127,7 +130,7 @@ func (h *LogsHandler) CreateAlertRule(ctx context.Context, request gen.CreateAle
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	return gen.CreateAlertRule200JSONResponse{
+	return gen.CreateAlertRule201JSONResponse{
 		Action:        ptr(gen.Created),
 		Status:        ptr(gen.Synced),
 		RuleLogicalId: params.Name,
@@ -158,6 +161,151 @@ func (h *LogsHandler) DeleteAlertRule(ctx context.Context, request gen.DeleteAle
 		RuleLogicalId: &request.RuleName,
 		RuleBackendId: &alertID,
 		LastSyncedAt:  &now,
+	}, nil
+}
+
+// GetAlertRule implements GET /api/v1alpha1/alerts/rules/{ruleName}.
+func (h *LogsHandler) GetAlertRule(ctx context.Context, request gen.GetAlertRuleRequestObject) (gen.GetAlertRuleResponseObject, error) {
+	alert, err := h.client.GetAlert(ctx, request.RuleName)
+	if err != nil {
+		h.logger.Error("Failed to get alert",
+			slog.String("function", "GetAlertRule"),
+			slog.String("ruleName", request.RuleName),
+			slog.Any("error", err),
+		)
+		if strings.Contains(err.Error(), "not found") {
+			return gen.GetAlertRule404JSONResponse{
+				Title:   ptr(gen.NotFound),
+				Message: ptr("alert rule not found"),
+			}, nil
+		}
+		return gen.GetAlertRule500JSONResponse{
+			Title:   ptr(gen.InternalServerError),
+			Message: ptr("internal server error"),
+		}, nil
+	}
+
+	searchPattern := openobserve.ExtractSearchPattern(alert.SQL)
+	operator := gen.AlertRuleResponseConditionOperator(openobserve.ReverseMapOperator(alert.Operator))
+	threshold := float32(alert.Threshold)
+	window := openobserve.ToDurationString(alert.Period, alert.FrequencyType)
+	interval := openobserve.ToDurationString(alert.Frequency, alert.FrequencyType)
+
+	metadata := &struct {
+		ComponentUid   *openapi_types.UUID `json:"componentUid,omitempty"`
+		EnvironmentUid *openapi_types.UUID `json:"environmentUid,omitempty"`
+		Name           *string             `json:"name,omitempty"`
+		Namespace      *string             `json:"namespace,omitempty"`
+		ProjectUid     *openapi_types.UUID `json:"projectUid,omitempty"`
+	}{
+		Name:      &alert.Name,
+		Namespace: strPtr(alert.Namespace),
+	}
+	if alert.ProjectUID != "" {
+		if uid, ok := parseUUID(alert.ProjectUID); ok {
+			metadata.ProjectUid = &uid
+		}
+	}
+	if alert.EnvironmentUID != "" {
+		if uid, ok := parseUUID(alert.EnvironmentUID); ok {
+			metadata.EnvironmentUid = &uid
+		}
+	}
+	if alert.ComponentUID != "" {
+		if uid, ok := parseUUID(alert.ComponentUID); ok {
+			metadata.ComponentUid = &uid
+		}
+	}
+
+	response := gen.AlertRuleResponse{
+		Metadata: metadata,
+		Source: &struct {
+			Metric *gen.AlertRuleResponseSourceMetric `json:"metric,omitempty"`
+			Query  *string                            `json:"query,omitempty"`
+		}{
+			Metric: ptr(gen.AlertRuleResponseSourceMetric("log")),
+			Query:  &searchPattern,
+		},
+		Condition: &struct {
+			Enabled   *bool                                  `json:"enabled,omitempty"`
+			Interval  *string                                `json:"interval,omitempty"`
+			Operator  *gen.AlertRuleResponseConditionOperator `json:"operator,omitempty"`
+			Threshold *float32                               `json:"threshold,omitempty"`
+			Window    *string                                `json:"window,omitempty"`
+		}{
+			Enabled:   &alert.Enabled,
+			Operator:  &operator,
+			Threshold: &threshold,
+			Window:    &window,
+			Interval:  &interval,
+		},
+	}
+
+	return gen.GetAlertRule200JSONResponse(response), nil
+}
+
+// UpdateAlertRule implements PUT /api/v1alpha1/alerts/rules/{ruleName}.
+func (h *LogsHandler) UpdateAlertRule(ctx context.Context, request gen.UpdateAlertRuleRequestObject) (gen.UpdateAlertRuleResponseObject, error) {
+	if request.Body == nil {
+		return gen.UpdateAlertRule400JSONResponse{
+			Title:   ptr(gen.BadRequest),
+			Message: ptr("request body is required"),
+		}, nil
+	}
+
+	params := toLogAlertParams(request.Body)
+
+	alertID, err := h.client.UpdateAlert(ctx, request.RuleName, params)
+	if err != nil {
+		h.logger.Error("Failed to update alert",
+			slog.String("function", "UpdateAlertRule"),
+			slog.String("ruleName", request.RuleName),
+			slog.Any("error", err),
+		)
+		if strings.Contains(err.Error(), "not found") {
+			return gen.UpdateAlertRule404JSONResponse{
+				Title:   ptr(gen.NotFound),
+				Message: ptr("alert rule not found"),
+			}, nil
+		}
+		if strings.Contains(err.Error(), "invalid") {
+			return gen.UpdateAlertRule400JSONResponse{
+				Title:   ptr(gen.BadRequest),
+				Message: ptr(err.Error()),
+			}, nil
+		}
+		return gen.UpdateAlertRule500JSONResponse{
+			Title:   ptr(gen.InternalServerError),
+			Message: ptr("internal server error"),
+		}, nil
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	return gen.UpdateAlertRule200JSONResponse{
+		Action:        ptr(gen.Updated),
+		Status:        ptr(gen.Synced),
+		RuleLogicalId: &request.RuleName,
+		RuleBackendId: &alertID,
+		LastSyncedAt:  &now,
+	}, nil
+}
+
+// HandleAlertWebhook implements POST /api/v1alpha1/alerts/webhook.
+func (h *LogsHandler) HandleAlertWebhook(ctx context.Context, _ gen.HandleAlertWebhookRequestObject) (gen.HandleAlertWebhookResponseObject, error) {
+	go func() {
+		forwardCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := h.observerClient.ForwardAlert(forwardCtx, "", "", 0, time.Time{}); err != nil {
+			h.logger.Error("Failed to forward alert webhook to observer API",
+				slog.Any("error", err),
+			)
+		}
+	}()
+
+	return gen.HandleAlertWebhook200JSONResponse{
+		Message: ptr("alert webhook received successfully"),
+		Status:  ptr(gen.Success),
 	}, nil
 }
 
@@ -272,6 +420,9 @@ func toLogAlertParams(req *gen.AlertRuleRequest) openobserve.LogAlertParams {
 		}
 	}
 	if req.Condition != nil {
+		if req.Condition.Enabled != nil {
+			params.Enabled = req.Condition.Enabled
+		}
 		if req.Condition.Operator != nil {
 			params.Operator = string(*req.Condition.Operator)
 		}

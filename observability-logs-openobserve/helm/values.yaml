@@ -154,6 +154,7 @@ openObserve:
 ## -----------------------------------------------------------
 
 adapter:
+  observerUrl: "http://observer-internal.openchoreo-observability-plane:8081"
   image:
     repository: "ghcr.io/openchoreo/observability-logs-openobserve-adapter"
     tag: "latest"

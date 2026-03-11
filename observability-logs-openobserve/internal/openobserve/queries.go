@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 )
 
@@ -44,6 +45,80 @@ func mapOperator(op string) (string, error) {
 	}
 }
 
+// ReverseMapOperator maps the OpenObserve SQL operator back to the API operator string.
+func ReverseMapOperator(op string) string {
+	switch op {
+	case "=":
+		return "eq"
+	case ">":
+		return "gt"
+	case ">=":
+		return "gte"
+	case "<":
+		return "lt"
+	case "<=":
+		return "lte"
+	case "!=":
+		return "neq"
+	default:
+		return op
+	}
+}
+
+// strMatchPattern matches str_match(log, 'pattern') in SQL queries.
+// The pattern allows embedded doubled single quotes (SQL escape: '' for ').
+var strMatchPattern = regexp.MustCompile(`str_match\s*\(\s*log\s*,\s*'((?:[^']|'')*)'\s*\)`)
+
+// ExtractSearchPattern extracts the search pattern from a str_match SQL expression.
+// It unescapes SQL-escaped doubled single quotes ('') and doubled backslashes (\\)
+// to reverse the escaping performed by escapeSQLString.
+func ExtractSearchPattern(sql string) string {
+	matches := strMatchPattern.FindStringSubmatch(sql)
+	if len(matches) >= 2 {
+		// Unescape SQL-escaped doubled quotes and backslashes.
+		// Order matters: unescape quotes first, then backslashes, to properly
+		// reverse the escaping done by escapeSQLString.
+		pattern := matches[1]
+		pattern = strings.ReplaceAll(pattern, "''", "'")
+		pattern = strings.ReplaceAll(pattern, "\\\\", "\\")
+		return pattern
+	}
+	return ""
+}
+
+// ToDurationString converts a period value and frequency type to a duration string.
+func ToDurationString(value int, frequencyType string) string {
+	switch frequencyType {
+	case "minutes":
+		return fmt.Sprintf("%dm", value)
+	case "hours":
+		return fmt.Sprintf("%dh", value)
+	default:
+		return fmt.Sprintf("%dm", value)
+	}
+}
+
+// parseDurationMinutes parses a duration string like "5m" or "2h" and returns the value in minutes.
+func parseDurationMinutes(duration string) (int, error) {
+	if len(duration) < 2 {
+		return 0, fmt.Errorf("invalid duration string: %q", duration)
+	}
+	unit := duration[len(duration)-1]
+	valueStr := duration[:len(duration)-1]
+	var value int
+	if _, err := fmt.Sscanf(valueStr, "%d", &value); err != nil {
+		return 0, fmt.Errorf("invalid duration value in %q: %w", duration, err)
+	}
+	switch unit {
+	case 'm':
+		return value, nil
+	case 'h':
+		return value * 60, nil
+	default:
+		return 0, fmt.Errorf("unsupported duration unit %q in %q", string(unit), duration)
+	}
+}
+
 // generateAlertConfig generates an OpenObserve alert configuration as JSON
 func generateAlertConfig(params LogAlertParams, streamName string, logger *slog.Logger) ([]byte, error) {
 	query := fmt.Sprintf(
@@ -63,20 +138,41 @@ func generateAlertConfig(params LogAlertParams, streamName string, logger *slog.
 		alertName = *params.Name
 	}
 
+	period, err := parseDurationMinutes(params.Window)
+	if err != nil {
+		return nil, fmt.Errorf("invalid alert window: %w", err)
+	}
+
+	frequency, err := parseDurationMinutes(params.Interval)
+	if err != nil {
+		return nil, fmt.Errorf("invalid alert interval: %w", err)
+	}
+
 	alertConfig := map[string]interface{}{
-		"name":        alertName,
-		"stream_name": streamName,
-		"query":       query,
-		"condition": map[string]interface{}{
-			"column":   "match_count",
-			"operator": sqlOperator,
-			"value":    params.ThresholdValue,
+		"name":         alertName,
+		"stream_name":  streamName,
+		"stream_type":  "logs",
+		"enabled":      *params.Enabled,
+		"is_real_time": false,
+		"query_condition": map[string]interface{}{
+			"type":       "sql",
+			"sql":        query,
+			"conditions": nil,
 		},
-		"duration":     params.Window,
-		"frequency":    params.Interval,
-		"is_realtime":  "no",
+		"trigger_condition": map[string]interface{}{
+			"period":    period,
+			"frequency": frequency,
+			"threshold": params.ThresholdValue,
+			"operator":  sqlOperator,
+			"silence":   0,
+		},
 		"destinations": []string{"openchoreo_alerts"},
-		"alert_type":   "scheduled",
+		"context_attributes": map[string]interface{}{
+			"namespace":      params.Namespace,
+			"projectUid":     params.ProjectUID,
+			"environmentUid": params.EnvironmentUID,
+			"componentUid":   params.ComponentUID,
+		},
 	}
 
 	if logger.Enabled(nil, slog.LevelDebug) {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	app "github.com/openchoreo/community-modules/observability-logs-openobserve/internal"
+	"github.com/openchoreo/community-modules/observability-logs-openobserve/internal/observer"
 	"github.com/openchoreo/community-modules/observability-logs-openobserve/internal/openobserve"
 )
 
@@ -94,8 +95,9 @@ func main() {
 
 	logger.Info("Successfully connected to OpenObserve")
 
-	// Create handlers and server
-	logsHandler := app.NewLogsHandler(client, logger)
+	// Create observer client and handlers
+	observerClient := observer.NewClient(cfg.ObserverURL)
+	logsHandler := app.NewLogsHandler(client, observerClient, logger)
 	srv := app.NewServer(cfg.ServerPort, logsHandler, logger)
 
 	go func() {

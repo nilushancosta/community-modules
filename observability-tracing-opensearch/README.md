@@ -42,10 +42,12 @@ EOF
 ```bash
 helm repo add opensearch-operator https://opensearch-project.github.io/opensearch-k8s-operator/
 helm repo update
-helm install opensearch-operator opensearch-operator/opensearch-operator \
+helm upgrade --install opensearch-operator opensearch-operator/opensearch-operator \
   --create-namespace \
   --namespace openchoreo-observability-plane \
-  --version 2.8.0
+  --version 2.8.0 \
+  --set kubeRbacProxy.image.repository=quay.io/brancz/kube-rbac-proxy \
+  --set kubeRbacProxy.image.tag=v0.15.0
 ```
 
 ### Deploy Helm chart

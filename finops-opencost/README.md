@@ -66,6 +66,7 @@ Bundled upstream Helm charts:
 
 > **Note:** The Helm chart version specified in the installation command above is for the latest module version compatible with the development version of OpenChoreo. Refer to the compatibility table below to determine the appropriate module version for your OpenChoreo installation.
 
-| Module Version | OpenChoreo Version |
-| -------------- | ------------------ |
-| v0.1.x         | v1.1.x             |
+| OpenChoreo Version | Module Version |
+| ------------------ | ---------------|
+| v1.3.0 and later   | 0.2.0          |
+| v1.1.x             | 0.1.x          |
